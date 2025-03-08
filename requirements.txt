@@ -1,0 +1,9 @@
+streamlit
+plotly
+pandas
+pymongo
+python-dotenv
+apscheduler
+lxml
+requests
+beautifulsoup4 
