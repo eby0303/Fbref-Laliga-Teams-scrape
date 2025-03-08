@@ -10,6 +10,7 @@ db = client['football']
 def load_data(collection_name):
     """Load data from MongoDB collection"""
     collection = db[collection_name]
+    
     data = list(collection.find({}))
     if data:
         return pd.DataFrame(data)
