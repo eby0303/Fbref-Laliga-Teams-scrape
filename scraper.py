@@ -2,7 +2,6 @@ import importlib
 import os
 from db import update_data, check_if_scraping_needed, get_collection_stats, view_collection_data
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 logger = logging.getLogger(__name__)
@@ -39,33 +38,18 @@ def run_single_scraper(scraper_name):
         return None, scraper_name
 
 def run_all_scrapers():
-    """Run all scrapers with timeout protection"""
+    """Run all scrapers sequentially"""
     scraper_files = [
         f.replace(".py", "") for f in os.listdir(SCRAPER_FOLDER) 
         if f.endswith(".py") and f != "__init__.py"
     ]
 
     all_data = {}
-    
-    # Set timeout for each scraper (in seconds)
-    timeout = 30
-    
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        # Submit all scraping tasks
-        future_to_scraper = {
-            executor.submit(run_single_scraper, scraper_name): scraper_name 
-            for scraper_name in scraper_files
-        }
-        
-        # Process completed tasks
-        for future in as_completed(future_to_scraper, timeout=timeout):
-            scraper_name = future_to_scraper[future]
-            try:
-                data, name = future.result()
-                if data is not None:
-                    all_data[name] = data
-            except Exception as e:
-                logger.error(f"❌ Scraper {scraper_name} failed: {str(e)}")
+
+    for scraper_name in scraper_files:
+        data, name = run_single_scraper(scraper_name)
+        if data is not None:
+            all_data[name] = data
 
     return all_data
 
