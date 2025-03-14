@@ -10,7 +10,6 @@ db = client['football']
 def load_data(collection_name):
     """Load data from MongoDB collection"""
     collection = db[collection_name]
-    
     data = list(collection.find({}))
     if data:
         return pd.DataFrame(data)
@@ -28,7 +27,11 @@ def main():
             st.rerun()
 
     # Create tabs for different stats
-    tabs = ["Defensive Stats", "Possession Stats", "Pass Types Stats"]
+    tabs = [
+        "Defensive Stats", "Possession Stats", "Pass Types Stats",
+        "Miscellaneous Stats", "General Stats", "Goal Shot Stats",
+        "Keeper Stats", "Passing Stats"
+    ]
     selected_tab = st.tabs(tabs)
 
     # Defensive Stats Tab
@@ -37,11 +40,7 @@ def main():
         defensive_df = load_data("laliga_defensive")
         if defensive_df is not None:
             st.dataframe(defensive_df)
-            
-            # Example visualization
-            if 'Tkl' in defensive_df.columns:
-                fig = px.bar(defensive_df, x='Date', y='Tkl', title='Tackles per Game')
-                st.plotly_chart(fig)
+
 
     # Possession Stats Tab
     with selected_tab[1]:
@@ -49,11 +48,7 @@ def main():
         possession_df = load_data("laliga_possession")
         if possession_df is not None:
             st.dataframe(possession_df)
-            
-            # Example visualization
-            if 'Poss' in possession_df.columns:
-                fig = px.line(possession_df, x='Date', y='Poss', title='Possession % per Game')
-                st.plotly_chart(fig)
+
 
     # Pass Types Stats Tab
     with selected_tab[2]:
@@ -61,11 +56,44 @@ def main():
         passtypes_df = load_data("laliga_passtypes")
         if passtypes_df is not None:
             st.dataframe(passtypes_df)
-            
-            # Example visualization for pass types
-            if 'Cmp' in passtypes_df.columns:
-                fig = px.scatter(passtypes_df, x='Date', y='Cmp', title='Completed Passes per Game')
-                st.plotly_chart(fig)
+
+
+    # Miscellaneous Stats Tab
+    with selected_tab[3]:
+        st.header("Miscellaneous Statistics")
+        misc_df = load_data("laliga_misc")
+        if misc_df is not None:
+            st.dataframe(misc_df)
+
+    # General Stats Tab
+    with selected_tab[4]:
+        st.header("General Statistics")
+        stats_df = load_data("laliga_stats")
+        if stats_df is not None:
+            st.dataframe(stats_df)
+
+    # Goal Shot Stats Tab
+    with selected_tab[5]:
+        st.header("Goal Shot Statistics")
+        goalshot_df = load_data("laliga_goalshot")
+        if goalshot_df is not None:
+            st.dataframe(goalshot_df)
+
+    # Keeper Stats Tab
+    with selected_tab[6]:
+        st.header("Keeper Statistics")
+        keeper_df = load_data("laliga_keeper")
+        if keeper_df is not None:
+            st.dataframe(keeper_df)
+
+
+    # Passing Stats Tab
+    with selected_tab[7]:
+        st.header("Passing Statistics")
+        passing_df = load_data("laliga_passing")
+        if passing_df is not None:
+            st.dataframe(passing_df)
+
 
 if __name__ == "__main__":
-    main() 
+    main()
