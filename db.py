@@ -2,90 +2,116 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import logging
 import pandas as pd
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 MONGO_URI = "mongodb://localhost:27017/"
 client = MongoClient(MONGO_URI)
 
-def check_if_scraping_needed(team, stat_category, year, hours_threshold=24):
-    """
-    Check if scraping is needed based on last update time.
-    Returns True if scraping is needed, False otherwise.
-    """
-    try:
-        db = client[f"football_{year}"]  # ✅ Use season-specific database
-        collection_name = f"{team}_{stat_category}"  # ✅ Example: "Barcelona_laliga_defensive"
+def get_season_db(season):
+    db_name = f"football_{season}"
+    return client[db_name]
+
+def check_if_scraping_needed(team, stat_category, year, season, hours_threshold=24):
+    db = get_season_db(season)
+    collection_name = f"{team}_{stat_category}_{year}"
+    collection = db[collection_name]
+    
+    if collection.count_documents({}) == 0:
+        print(f"Collection {collection_name} is empty. Scraping needed.")
+        return True
+        
+    latest_doc = collection.find_one(
+        sort=[('last_updated', -1)]
+    )
+    
+    if not latest_doc:
+        return True
+        
+    current_time = datetime.now()
+    last_update = latest_doc.get('last_updated', datetime.min)
+    
+    if isinstance(last_update, str):
+        last_update = datetime.fromisoformat(last_update.replace('Z', '+00:00'))
+        
+    time_difference = current_time - last_update
+    
+    if time_difference > timedelta(hours=hours_threshold):
+        print(f"Data in {collection_name} is older than {hours_threshold} hours. Scraping needed.")
+        return True
+        
+    print(f"Recent data exists in {collection_name}. Skipping scrape.")
+    return False
+
+def verify_database_connection():
+    client.admin.command('ping')
+    print("✅ MongoDB connection successful")
+    
+    collections = [
+        'laliga_defensive',
+        'laliga_possession',
+        'laliga_passtypes',
+        'laliga_stats',
+        'laliga_keeper',
+        'laliga_passing',
+        'laliga_goalshot',
+        'laliga_misc',
+        'laliga_shooting'
+    ]
+    
+    season = "2023-2024"  # Example 
+    db = get_season_db(season)
+    for collection_name in collections:
         collection = db[collection_name]
+        collection.create_index('last_updated')
+        print(f"✅ Verified collection: {collection_name}")
+        
+    return True
 
-        existing_data = collection.find_one({"team": team, "year": year})
-
-        if not existing_data:
-            logger.info(f"🆕 No data found for {team} ({year}) in {stat_category}. Scraping needed.")
-            return True
-
-        last_update = existing_data.get('last_updated', datetime.min)
-        if isinstance(last_update, str):
-            last_update = datetime.fromisoformat(last_update.replace('Z', '+00:00'))
-
-        if datetime.now() - last_update > timedelta(hours=hours_threshold):
-            logger.info(f"⏳ Data for {team} ({year}) in {stat_category} is outdated. Scraping needed.")
-            return True
-
-        logger.info(f"✅ Recent data exists for {team} ({year}) in {stat_category}. Skipping scrape.")
-        return False
-
-    except Exception as e:
-        logger.error(f"❌ Error checking {team}_{stat_category}: {e}")
-        return True  # Assume scraping is needed if there's an error
-
-def update_data(df, year, team, stat_category):
-    """Update MongoDB with new scraped data."""
-    try:
-        db = client[f"football_{year}"]  # ✅ Store in season-specific database
-        collection_name = f"{team}_{stat_category}"  # ✅ Store each stat in a unique collection
-        collection = db[collection_name]
-
-        if df is not None and not df.empty:
-            current_time = datetime.now()
-            df["last_updated"] = current_time
-            df["team"] = team
-            df["year"] = year
-            df["stat"] = stat_category
-
-            # Convert DataFrame to records
-            data_dict = df.to_dict(orient="records")
-
-            for record in data_dict:
-                try:
-                    date = record.get("Date", "")
-                    if date:
-                        record["_id"] = f"{team}_{year}_{stat_category}_{date}"
-
-                    # Insert or update the record
-                    collection.update_one(
-                        {"_id": record["_id"]},
-                        {"$set": record},
-                        upsert=True
-                    )
-
-                except Exception as e:
-                    logger.error(f"❌ Error updating record in {collection_name}: {e}")
-
-            logger.info(f"✅ Successfully updated {collection_name} with {len(data_dict)} records")
-
-        else:
-            logger.warning(f"⚠️ Skipping {collection_name} update - No valid data")
-
-    except Exception as e:
-        logger.error(f"❌ Error updating database: {e}")
-        raise
+def update_data(data, year, team, stat_category, season):
+    db = get_season_db(season)
+    collection_name = f"{team}_{stat_category}_{year}"
+    collection = db[collection_name]
+    
+    if data is not None and not data.empty:
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = [f"{col[0]}_{col[1]}" if col[1] else col[0] 
+                            for col in data.columns]
+        
+        current_time = datetime.now()
+        data['last_updated'] = current_time
+        
+        data_dict = data.to_dict(orient='records')
+        
+        for record in data_dict:
+            # Use the team name dynamically to access the correct keys
+            date_key = f'For {team}_Date' 
+            opponent_key = f'For {team}_Opponent'  
+            
+            date = record.get(date_key, record.get('Date', ''))
+            opponent = record.get(opponent_key, record.get('Opponent', ''))
+            
+            if date and opponent:
+                record['_id'] = f"{date}_{opponent}"
+                print(f"Processing record: {record}") 
+            
+                # Check if the record already exists
+                existing_record = collection.find_one({"_id": record['_id']})
+                if existing_record:
+                    print(f"Updating existing record: {record['_id']}")  
+                else:
+                    print(f"Inserting new record: {record['_id']}")  
+                collection.update_one(
+                    {"_id": record.get("_id", None)},
+                    {"$set": record},
+                    upsert=True
+                )
+        
+        print(f"✅ Successfully updated {collection_name} collection with {len(data_dict)} records")
+    else:
+        print(f"⚠️ Skipping {collection_name} update - No valid data")
+        pass
+        
+    print("✅ Database update complete")

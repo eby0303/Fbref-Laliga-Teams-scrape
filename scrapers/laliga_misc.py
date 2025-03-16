@@ -6,13 +6,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.scraper_utils import retry_on_failure, validate_scrape, safe_read_html
 import pandas as pd
-import logging
-
-logger = logging.getLogger(__name__)
 
 # Dictionary of Squad IDs for teams
 SQUAD_IDS = {
-     "Real Madrid": "206d90db",
+     "Real Madrid": "53a2f082",
     "Barcelona": "206d90db",  # Replace with correct ID
     "Atletico Madrid": "db3b9613",
     "Valencia":"dcc91a7b",
@@ -37,7 +34,6 @@ SQUAD_IDS = {
 @retry_on_failure(max_retries=3, delay=5)
 def process_misc_stats(year, team):
     """Process miscellaneous statistics dynamically for any team and season."""
-    logger.info(f"Starting miscellaneous stats scraping for {team} in {year}")
 
     # Get Squad ID for the team
     if team not in SQUAD_IDS:
@@ -55,14 +51,12 @@ def process_misc_stats(year, team):
 
     try:
         # Read the HTML table
-        logger.info(f"Attempting to read HTML table for {team} in {year}")
         df_list = safe_read_html(url, table_id)
 
         if not df_list:
             raise ValueError(f"No tables found in the URL for {team} in {year}")
 
         df = df_list[0]
-        logger.info(f"Successfully read HTML table for {team} in {year}")
 
         # Select relevant columns
         df = df.iloc[:, :-1]  # Remove last column if unnecessary
@@ -80,6 +74,5 @@ def process_misc_stats(year, team):
         return df
 
     except Exception as e:
-        logger.error(f"Error in process_misc_stats for {team} ({year}): {str(e)}")
         raise
 
