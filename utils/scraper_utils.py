@@ -50,10 +50,10 @@ def validate_scrape(df, module_name):
     logger = logging.getLogger(module_name)
     
     if df is None or df.empty:
-        logger.error("❌ Scraping failed: DataFrame is empty or None")
+        logger.error(" Scraping failed: DataFrame is empty or None")
         return False
     
-    logger.info(f"✅ Scraping successful! Retrieved {len(df)} rows of data")
+    logger.info(f" Scraping successful! Retrieved {len(df)} rows of data")
     return True
 
 def retry_on_failure(max_retries=3, delay=5):
@@ -65,19 +65,19 @@ def retry_on_failure(max_retries=3, delay=5):
             
             for attempt in range(max_retries):
                 try:
-                    logger.info(f"🔄 Attempt {attempt + 1} of {max_retries}")
+                    logger.info(f" Attempt {attempt + 1} of {max_retries}")
                     result = func(*args, **kwargs)
                     return result
                 except ImportError as e:
-                    logger.error(f"❌ Dependency Error: {e}")
+                    logger.error(f" Dependency Error: {e}")
                     raise  # Don't retry if it's a dependency issue
                 except Exception as e:
-                    logger.error(f"❌ Attempt {attempt + 1} failed: {str(e)}")
+                    logger.error(f" Attempt {attempt + 1} failed: {str(e)}")
                     if attempt < max_retries - 1:
-                        logger.info(f"⏳ Waiting {delay} seconds before retrying...")
+                        logger.info(f" Waiting {delay} seconds before retrying...")
                         time.sleep(delay)
                     else:
-                        logger.error("❌ All retry attempts failed")
+                        logger.error(" All retry attempts failed")
                         raise
             
         return wrapper

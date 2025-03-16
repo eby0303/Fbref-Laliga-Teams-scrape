@@ -1,16 +1,16 @@
 import streamlit as st
 import pandas as pd
-from scraper import run_all_scrapers
+from scraper import run_scraper
 from db import client
 import plotly.express as px
 
-# Initialize connection to MongoDB
-db = client['football']
-
-def load_data(collection_name):
-    """Load data from MongoDB collection"""
+def load_data(year, team, stat_category):
+    """Load data from the correct season's database and collection."""
+    db = client[f"football_{year}"]  # ✅ Select the correct season database
+    collection_name = f"{team}_{stat_category}"  # ✅ Example: "Barcelona_laliga_defensive"
     collection = db[collection_name]
-    data = list(collection.find({}))
+
+    data = list(collection.find())
     if data:
         return pd.DataFrame(data)
     return None
@@ -19,81 +19,40 @@ def main():
     st.title("La Liga Stats Dashboard")
     st.sidebar.title("Controls")
 
-    # Add refresh button in sidebar
+    # Add user input fields
+    selected_year = st.sidebar.text_input("Enter Season (e.g., 2023-24):", "2023-24")
+    selected_team = st.sidebar.text_input("Enter Team (e.g., Barcelona):", "Barcelona")
+
+    # Mapping tab names to scraper names
+    collection_mapping = {
+        "Defensive Stats": "laliga_defensive",
+        "Possession Stats": "laliga_possession",
+        "Pass Types Stats": "laliga_passtypes",
+        "Miscellaneous Stats": "laliga_misc",
+        "General Stats": "laliga_stats",
+        "Goal Shot Stats": "laliga_goalshot",
+        "Keeper Stats": "laliga_keeper",
+        "Passing Stats": "laliga_passing"
+    }
+
+    selected_tab = st.sidebar.radio("Select Stats Category", list(collection_mapping.keys()))
+
     if st.sidebar.button("Refresh Data"):
-        with st.spinner("Scraping new data..."):
-            scraped_data = run_all_scrapers()
-            st.success("Data refreshed successfully!")
+        stat_category = collection_mapping[selected_tab]
+        with st.spinner(f"Scraping {selected_tab} data for {selected_team} in {selected_year}..."):
+            run_scraper(selected_year, selected_team, stat_category)  # ✅ Scrape only the selected stat
+            st.success(f"Data for {selected_team} ({selected_year}) updated successfully!")
             st.rerun()
 
-    # Create tabs for different stats
-    tabs = [
-        "Defensive Stats", "Possession Stats", "Pass Types Stats",
-        "Miscellaneous Stats", "General Stats", "Goal Shot Stats",
-        "Keeper Stats", "Passing Stats"
-    ]
-    selected_tab = st.tabs(tabs)
+    # Fetch and display data from MongoDB
+    st.header(selected_tab)
+    stat_category = collection_mapping[selected_tab]
+    df = load_data(selected_year, selected_team, stat_category)
 
-    # Defensive Stats Tab
-    with selected_tab[0]:
-        st.header("Defensive Statistics")
-        defensive_df = load_data("laliga_defensive")
-        if defensive_df is not None:
-            st.dataframe(defensive_df)
-
-
-    # Possession Stats Tab
-    with selected_tab[1]:
-        st.header("Possession Statistics")
-        possession_df = load_data("laliga_possession")
-        if possession_df is not None:
-            st.dataframe(possession_df)
-
-
-    # Pass Types Stats Tab
-    with selected_tab[2]:
-        st.header("Pass Types Statistics")
-        passtypes_df = load_data("laliga_passtypes")
-        if passtypes_df is not None:
-            st.dataframe(passtypes_df)
-
-
-    # Miscellaneous Stats Tab
-    with selected_tab[3]:
-        st.header("Miscellaneous Statistics")
-        misc_df = load_data("laliga_misc")
-        if misc_df is not None:
-            st.dataframe(misc_df)
-
-    # General Stats Tab
-    with selected_tab[4]:
-        st.header("General Statistics")
-        stats_df = load_data("laliga_stats")
-        if stats_df is not None:
-            st.dataframe(stats_df)
-
-    # Goal Shot Stats Tab
-    with selected_tab[5]:
-        st.header("Goal Shot Statistics")
-        goalshot_df = load_data("laliga_goalshot")
-        if goalshot_df is not None:
-            st.dataframe(goalshot_df)
-
-    # Keeper Stats Tab
-    with selected_tab[6]:
-        st.header("Keeper Statistics")
-        keeper_df = load_data("laliga_keeper")
-        if keeper_df is not None:
-            st.dataframe(keeper_df)
-
-
-    # Passing Stats Tab
-    with selected_tab[7]:
-        st.header("Passing Statistics")
-        passing_df = load_data("laliga_passing")
-        if passing_df is not None:
-            st.dataframe(passing_df)
-
+    if df is not None:
+        st.dataframe(df)
+    else:
+        st.warning(f"No data found for {selected_team} in {selected_year} for {selected_tab}.")
 
 if __name__ == "__main__":
     main()
