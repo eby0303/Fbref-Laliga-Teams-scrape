@@ -10,7 +10,7 @@ import pandas as pd
 # Dictionary of Squad IDs for teams
 SQUAD_IDS = {
     "Real Madrid": "53a2f082",
-    "Barcelona": "206d90db",  # Replace with correct ID
+    "Barcelona": "206d90db",  
     "Atletico Madrid": "db3b9613",
     "Valencia":"dcc91a7b",
     "Athletic Club":"2b390eca",
@@ -27,9 +27,12 @@ SQUAD_IDS = {
    "Celta Vigo" : "f25da7fb",
    "Las Palmas": "0049d422",
    "Mallorca":"2aa12281",
-  "Real Betis": "fc536746",
-  "Leganes" : "7c6f2c78"
-
+    "Real Betis": "fc536746",
+    "Leganes" : "7c6f2c78",
+    "Almeria" : "78ecf4bb",
+    "Cadiz" : "ee7c297c",
+    "Granada" : "a0435291"
+  
 }
 
 @retry_on_failure(max_retries=3, delay=5)

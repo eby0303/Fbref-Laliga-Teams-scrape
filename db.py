@@ -86,7 +86,7 @@ def update_data(data, year, team, stat_category, season):
         data_dict = data.to_dict(orient='records')
         
         for record in data_dict:
-            # Use the team name dynamically to access the correct keys
+            # Use the team name dynamically
             date_key = f'For {team}_Date' 
             opponent_key = f'For {team}_Opponent'  
             

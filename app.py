@@ -36,7 +36,8 @@ def main():
         "Schedule Stats": "laliga_stats",
         "Goal Shot Stats": "laliga_goalshot",
         "Keeper Stats": "laliga_keeper",
-        "Passing Stats": "laliga_passing"
+        "Passing Stats": "laliga_passing",
+        "Shooting Stats": "laliga_shooting"
     }
 
     selected_tab = st.sidebar.radio("Select Stats Category", list(collection_mapping.keys()))
